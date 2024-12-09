@@ -11,7 +11,7 @@ pip install -r requirements.txt
 ## 运行
 
 ```python
-uvicorn main: app
+OPENAI_API_KEY=[your api key] OPENAI_BASE_URL=[your openai compatible base url] MODEL=[your model] uvicorn main:app
 ```
 
 更多关于Fastapi的使用请参考[Fastapi文档](https://fastapi.tiangolo.com/zh/)。
