@@ -1,8 +1,8 @@
 import asyncio
 import os
 from urllib.parse import urljoin
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, HttpUrl
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel, HttpUrl, Field
 from typing import List
 import httpx
 from contextlib import asynccontextmanager
@@ -23,23 +23,60 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="异步请求代理", description="将一个网络请求代理为异步请求，通过Webhook返回结果", lifespan=lifespan)
 
 
-# 定义请求体
 class ForwardRequest(BaseModel):
     """
     用于转发HTTP请求的数据模型。
 
     Attributes:
-        http_desc (str): 需要转发的HTTP请求的字符串表示，可以是任何表示方法，由AI来解析，所以越清晰越好。
-        webhooks (List[HttpUrl]): 接收转发请求结果的Webhook URL列表。
+        http_desc (str): 需要转发的HTTP请求的字符串表示。这个字符串应该尽可能详细地描述请求的意图，
+                         包括请求方法（GET, POST, PUT, DELETE 等）、目标URL、任何查询参数、头信息以及请求体内容。
+                         例如："发送一个POST请求到'https://www.example.com'，携带JSON{'name': 'John', 'age': 30}"。
+        webhooks (List[HttpUrl]): 接收转发请求结果的Webhook URL列表。每当代理完成HTTP请求并收到响应后，
+                                  它会将响应结果发送到此列表中的每一个URL。每个URL都必须是有效的HTTP或HTTPS URL。
     """
-    http_desc: str
-    webhooks: List[HttpUrl]
+
+    http_desc: str = Field(
+        ...,
+        title="HTTP请求描述",
+        description="需要转发的HTTP请求的字符串表示，尽可能详细地描述请求的意图。",
+        example="发送一个POST请求到'https://www.example.com'，携带JSON{'name': 'John', 'age': 30}"
+    )
+
+    webhooks: List[HttpUrl] = Field(
+        ...,
+        min_items=0,
+        title="Webhook URLs",
+        description="接收转发请求结果的Webhook URL列表。每个URL都必须是有效的HTTP或HTTPS URL。该接口需要处理post请求，接收JSON数据，"
+                    "其中包含字段response_data和response_status_code。",
+        example=["http://localhost:8000/receive_data"]
+    )
 
 
-@app.post("/")
-async def root(request_data: ForwardRequest):
+@app.post("/", summary="请求代理与异步化", responses={
+    200: {
+        "description": "请求成功。",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "success": {
+                        "value": {"code": 200, "msg": "success", "data": ""}
+                    }
+                }
+            }
+        },
+    }
+})
+async def root(request_data: ForwardRequest = Body(
+    description="请求代理数据",
+    example={
+        "http_desc": "发送一个POST请求到‘https://www.example.com’，携带JSON{\"name\":\"John\",\"age\":30}",
+        "webhooks": [
+            "http://localhost:8000/receive_data"
+        ]
+    }
+)):
     """
-    转发HTTP请求，并异步返回结果。
+    转发HTTP请求，并异步返回结果。参数说明详见参数处具体描述。
     """
     payload = {
         "model": os.environ.get("MODEL", ""),
