@@ -38,7 +38,7 @@ class ForwardRequest(BaseModel):
     http_desc: str = Field(
         ...,
         title="HTTP请求描述",
-        description="需要转发的HTTP请求的字符串表示，尽可能详细地描述请求的意图。",
+        description="需要转发的HTTP请求的字符串表示，尽可能详细地描述请求的意图。这段话是发给AI的，代码或者自然语言都行，不行的话多多尝试。",
         example="发送一个POST请求到'https://www.example.com'，携带JSON{'name': 'John', 'age': 30}"
     )
 
